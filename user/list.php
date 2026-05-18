@@ -41,6 +41,11 @@ if ($method === 'GET') {
       season_counts = COALESCE(VALUES(season_counts), season_counts), updated_at = NOW()
     ');
     $stmt->execute([$user_id, $media_type, $tmdb_id, $status, $rating, $review, $title, $poster_path, $runtime, $season_counts]);
+
+    $activity_type = $rating ? 'rated' : $status;
+    $log = $pdo->prepare('INSERT INTO activity (user_id, type, media_type, tmdb_id, title, poster_path, rating) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    $log->execute([$user_id, $activity_type, $media_type, $tmdb_id, $title, $poster_path, $rating]);
+
     echo json_encode(['message' => 'Saved']);
 
 } elseif ($method === 'DELETE') {
