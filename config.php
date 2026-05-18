@@ -6,6 +6,10 @@ define('DB_NAME', getenv('DB_NAME') ?: 'mediarate');
 define('DB_PORT', getenv('DB_PORT') ?: '3306');
 define('TMDB_TOKEN', getenv('TMDB_TOKEN') ?: 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0OGM5ZmU1OTdlNWZiNjBiMDc1MDhkMjQyOTM3YTE0NCIsIm5iZiI6MTc2NTAzODAxOC4xMTEsInN1YiI6IjY5MzQ1N2MyMDc4OTgwZWEyNWQxZjkzOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.FnIBD-e1Wwo5f3m-Lx7rk6P3zwdNioWQgEyeBw2MoRs');
 
+ini_set('session.cookie_samesite', 'None');
+ini_set('session.cookie_secure', '1');
+ini_set('session.cookie_httponly', '1');
+
 $allowed_origin = getenv('FRONTEND_URL') ?: 'http://localhost:5173';
 
 header('Content-Type: application/json');
