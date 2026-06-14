@@ -18,8 +18,10 @@ if (getenv('DB_HOST')) {
     $dsn  = "pgsql:host=$host;port=$port;dbname=$name";
 }
 
-// Allow frontend origin — set FRONTEND_URL env var on Railway
-$allowedOrigin = getenv('FRONTEND_URL') ?: 'http://localhost:5173';
+// Allow frontend origin — supports multiple comma-separated URLs
+$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('FRONTEND_URL') ?: 'http://localhost:5173')));
+$requestOrigin  = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigin  = in_array($requestOrigin, $allowedOrigins) ? $requestOrigin : ($allowedOrigins[0] ?? '*');
 
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: $allowedOrigin");
