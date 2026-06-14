@@ -1,17 +1,7 @@
 <?php
-// Cross-origin session cookies (required for Vercel → Render)
-session_set_cookie_params([
-    'lifetime' => 86400 * 30,
-    'path'     => '/',
-    'secure'   => true,
-    'httponly' => true,
-    'samesite' => 'None',
-]);
-session_start();
-
 define('TMDB_TOKEN', getenv('TMDB_TOKEN') ?: 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0OGM5ZmU1OTdlNWZiNjBiMDc1MDhkMjQyOTM3YTE0NCIsIm5iZiI6MTc2NTAzODAxOC4xMTEsInN1YiI6IjY5MzQ1N2MyMDc4OTgwZWEyNWQxZjkzOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.FnIBD-e1Wwo5f3m-Lx7rk6P3zwdNioWQgEyeBw2MoRs');
 
-// Use individual env vars (Render) or fall back to local dev values
+// ── Database connection ───────────────────────────────────────────────────
 if (getenv('DB_HOST')) {
     $host = getenv('DB_HOST');
     $port = getenv('DB_PORT') ?: 5432;
@@ -28,7 +18,65 @@ if (getenv('DB_HOST')) {
     $dsn  = "pgsql:host=$host;port=$port;dbname=$name";
 }
 
-// Allow frontend origin — supports multiple comma-separated URLs
+$pdo = new PDO($dsn, $user, $pass);
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// ── Database-backed session handler (survives Render restarts) ────────────
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS sessions (
+        id VARCHAR(128) PRIMARY KEY,
+        data TEXT NOT NULL DEFAULT '',
+        expires TIMESTAMP NOT NULL
+    )
+");
+
+class DBSessionHandler implements SessionHandlerInterface {
+    private PDO $db;
+    public function __construct(PDO $db) { $this->db = $db; }
+    public function open($path, $name): bool { return true; }
+    public function close(): bool { return true; }
+
+    public function read($id): string {
+        $s = $this->db->prepare("SELECT data FROM sessions WHERE id = ? AND expires > NOW()");
+        $s->execute([$id]);
+        $row = $s->fetch(PDO::FETCH_ASSOC);
+        return $row ? $row['data'] : '';
+    }
+
+    public function write($id, $data): bool {
+        $s = $this->db->prepare("
+            INSERT INTO sessions (id, data, expires)
+            VALUES (?, ?, NOW() + INTERVAL '30 days')
+            ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, expires = EXCLUDED.expires
+        ");
+        return $s->execute([$id, $data]);
+    }
+
+    public function destroy($id): bool {
+        $s = $this->db->prepare("DELETE FROM sessions WHERE id = ?");
+        return $s->execute([$id]);
+    }
+
+    public function gc($max_lifetime): int|false {
+        $s = $this->db->prepare("DELETE FROM sessions WHERE expires < NOW()");
+        $s->execute();
+        return $s->rowCount();
+    }
+}
+
+session_set_save_handler(new DBSessionHandler($pdo), true);
+
+// ── Cross-origin session cookies ──────────────────────────────────────────
+session_set_cookie_params([
+    'lifetime' => 86400 * 30,
+    'path'     => '/',
+    'secure'   => true,
+    'httponly' => true,
+    'samesite' => 'None',
+]);
+session_start();
+
+// ── CORS ──────────────────────────────────────────────────────────────────
 $allowedOrigins = array_filter(array_map('trim', explode(',', getenv('FRONTEND_URL') ?: 'http://localhost:5173')));
 $requestOrigin  = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigin  = in_array($requestOrigin, $allowedOrigins) ? $requestOrigin : ($allowedOrigins[0] ?? '*');
@@ -44,10 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-$pdo = new PDO($dsn, $user, $pass);
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-// Initialize schema on first run
+// ── Schema ────────────────────────────────────────────────────────────────
 $pdo->exec("
     CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
