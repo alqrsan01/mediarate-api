@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 
 require_once '../config.php';
 require_once '../auth/jwt.php';
 
-if (!isset(get_token_user_id())) {
+if (get_token_user_id() === null) {
     http_response_code(401);
     echo json_encode(['error' => 'Not authenticated']);
     exit();
@@ -65,3 +65,4 @@ echo json_encode([
     'failed'  => $failed,
     'total'   => count($items),
 ]);
+
