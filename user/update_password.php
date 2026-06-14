@@ -1,8 +1,9 @@
 <?php
 
 require_once '../config.php';
+require_once '../auth/jwt.php';
 
-if (!isset($_SESSION['user_id'])) {
+if (!isset(get_token_user_id())) {
   http_response_code(401);
   echo json_encode(['error' => 'Not authenticated']);
   exit();
@@ -25,7 +26,7 @@ if (strlen($new) < 6) {
 } 
 
 $stmt = $pdo->prepare('SELECT password_hash FROM users WHERE id = ?');
-$stmt->execute([$_SESSION['user_id']]);
+$stmt->execute([get_token_user_id()]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!password_verify($current, $user['password_hash'])) {
@@ -36,6 +37,6 @@ if (!password_verify($current, $user['password_hash'])) {
 
 $hash = password_hash($new, PASSWORD_BCRYPT);
 $stmt = $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
-$stmt->execute([$hash, $_SESSION['user_id']]);
+$stmt->execute([$hash, get_token_user_id()]);
 
 echo json_encode(['message' => 'Password updated successfully']);

@@ -1,8 +1,9 @@
 <?php
 
 require_once '../config.php';
+require_once '../auth/jwt.php';
 
-if (!isset($_SESSION['user_id'])) {
+if (!isset(get_token_user_id())) {
   http_response_code(401);
   echo json_encode(['error' => 'Not authenticated']);
   exit();
@@ -24,10 +25,10 @@ if  (!filter_var($avatar_url, FILTER_VALIDATE_URL)) {
 }
 
 $stmt = $pdo->prepare('UPDATE users SET avatar_url = ? WHERE id = ?');
-$stmt->execute([$avatar_url, $_SESSION['user_id']]);
+$stmt->execute([$avatar_url, get_token_user_id()]);
 
 $stmt = $pdo->prepare('SELECT id, username, email, avatar_url FROM users WHERE id = ?');
-$stmt->execute([$_SESSION['user_id']]);
+$stmt->execute([get_token_user_id()]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 echo json_encode(['user' => $user]);

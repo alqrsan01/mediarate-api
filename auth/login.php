@@ -1,15 +1,15 @@
 <?php
-
 require_once '../config.php';
+require_once 'jwt.php';
 
-$data = json_decode(file_get_contents('php://input'), true);
-$email = trim($data['email'] ?? '');
+$data     = json_decode(file_get_contents('php://input'), true);
+$email    = trim($data['email'] ?? '');
 $password = $data['password'] ?? '';
 
 if (!$email || !$password) {
-  http_response_code(400);
-  echo json_encode(['error' => 'All fields are required']);
-  exit();
+    http_response_code(400);
+    echo json_encode(['error' => 'All fields are required']);
+    exit();
 }
 
 $stmt = $pdo->prepare('SELECT id, username, email, avatar_url, password_hash FROM users WHERE email = ?');
@@ -17,12 +17,15 @@ $stmt->execute([$email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user || !password_verify($password, $user['password_hash'])) {
-  http_response_code(401);
-  echo json_encode(['error' => 'Invalid email or password']);
-  exit();
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid email or password']);
+    exit();
 }
 
-$_SESSION['user_id'] = $user['id'];
+$token = jwt_encode([
+    'user_id' => $user['id'],
+    'exp'     => time() + 86400 * 30,
+]);
 
 unset($user['password_hash']);
-echo json_encode(['user' => $user]);
+echo json_encode(['user' => $user, 'token' => $token]);

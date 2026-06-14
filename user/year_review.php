@@ -1,14 +1,15 @@
 <?php
 
 require_once '../config.php';
+require_once '../auth/jwt.php';
 
-if (!isset($_SESSION['user_id'])) {
+if (!isset(get_token_user_id())) {
     http_response_code(401);
     echo json_encode(['error' => 'Not authenticated']);
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
+$user_id = get_token_user_id();
 $year    = intval($_GET['year'] ?? date('Y'));
 
 // Counts by media type

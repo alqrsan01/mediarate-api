@@ -1,15 +1,16 @@
 <?php
-
 require_once '../config.php';
+require_once 'jwt.php';
 
-if (!isset($_SESSION['user_id'])) {
-  http_response_code(401);
-  echo json_encode(['error' => 'Not authenticated']);
-  exit();
+$userId = get_token_user_id();
+if (!$userId) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Not authenticated']);
+    exit();
 }
 
 $stmt = $pdo->prepare('SELECT id, username, email, avatar_url FROM users WHERE id = ?');
-$stmt->execute([$_SESSION['user_id']]);
+$stmt->execute([$userId]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 echo json_encode(['user' => $user]);
