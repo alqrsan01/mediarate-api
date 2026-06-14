@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 require_once '../config.php';
 require_once '../auth/jwt.php';
@@ -69,4 +69,3 @@ echo json_encode([
     'movie' => $movie,
     'tv'    => $tv,
 ]);
-

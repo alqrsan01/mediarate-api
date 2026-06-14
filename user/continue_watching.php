@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 require_once '../config.php';
 require_once '../auth/jwt.php';
@@ -74,4 +74,3 @@ $items = array_map(function($row) {
 }, $rows);
 
 echo json_encode(['items' => $items]);
-

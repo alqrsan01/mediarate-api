@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 require_once '../config.php';
 require_once '../auth/jwt.php';
@@ -65,4 +65,3 @@ echo json_encode([
     'failed'  => $failed,
     'total'   => count($items),
 ]);
-

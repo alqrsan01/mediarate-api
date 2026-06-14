@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 require_once '../config.php';
 require_once '../auth/jwt.php';
@@ -98,4 +98,3 @@ if ($method === 'GET') {
     $stmt->execute([$user_id, $show_id, $season_number, $episode_number]);
     echo json_encode(['message' => 'Removed']);
 }
-

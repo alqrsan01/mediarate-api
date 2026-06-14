@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 require_once '../config.php';
 require_once '../auth/jwt.php';
@@ -59,4 +59,3 @@ if ($method === 'GET') {
     $stmt->execute([$user_id, $media_type, $tmdb_id]);
     echo json_encode(['message' => 'Removed']);
 }
-
