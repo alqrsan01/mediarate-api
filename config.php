@@ -1,17 +1,15 @@
 <?php
 define('TMDB_TOKEN', getenv('TMDB_TOKEN') ?: 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI0OGM5ZmU1OTdlNWZiNjBiMDc1MDhkMjQyOTM3YTE0NCIsIm5iZiI6MTc2NTAzODAxOC4xMTEsInN1YiI6IjY5MzQ1N2MyMDc4OTgwZWEyNWQxZjkzOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.FnIBD-e1Wwo5f3m-Lx7rk6P3zwdNioWQgEyeBw2MoRs');
 
-// Railway provides DATABASE_URL — parse it; fall back to local dev values
-$dbUrl = getenv('DATABASE_URL');
-if ($dbUrl) {
-    $p    = parse_url($dbUrl);
-    $host = $p['host'];
-    $port = $p['port'] ?? 5432;
-    $user = $p['user'];
-    $pass = $p['pass'];
-    $name = ltrim($p['path'], '/');
+// Use individual env vars (Render) or fall back to local dev values
+if (getenv('DB_HOST')) {
+    $host = getenv('DB_HOST');
+    $port = getenv('DB_PORT') ?: 5432;
+    $user = getenv('DB_USER');
+    $pass = getenv('DB_PASS');
+    $name = getenv('DB_NAME') ?: 'postgres';
     $dsn  = "pgsql:host=$host;port=$port;dbname=$name;sslmode=require";
-} else { 
+} else {
     $host = 'localhost';
     $port = 5433;
     $user = 'postgres';
