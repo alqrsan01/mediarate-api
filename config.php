@@ -21,61 +21,6 @@ if (getenv('DB_HOST')) {
 $pdo = new PDO($dsn, $user, $pass);
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// ── Database-backed session handler (survives Render restarts) ────────────
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS sessions (
-        id VARCHAR(128) PRIMARY KEY,
-        data TEXT NOT NULL DEFAULT '',
-        expires TIMESTAMP NOT NULL
-    )
-");
-
-class DBSessionHandler implements SessionHandlerInterface {
-    private PDO $db;
-    public function __construct(PDO $db) { $this->db = $db; }
-    public function open($path, $name): bool { return true; }
-    public function close(): bool { return true; }
-
-    public function read($id): string {
-        $s = $this->db->prepare("SELECT data FROM sessions WHERE id = ? AND expires > NOW()");
-        $s->execute([$id]);
-        $row = $s->fetch(PDO::FETCH_ASSOC);
-        return $row ? $row['data'] : '';
-    }
-
-    public function write($id, $data): bool {
-        $s = $this->db->prepare("
-            INSERT INTO sessions (id, data, expires)
-            VALUES (?, ?, NOW() + INTERVAL '30 days')
-            ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, expires = EXCLUDED.expires
-        ");
-        return $s->execute([$id, $data]);
-    }
-
-    public function destroy($id): bool {
-        $s = $this->db->prepare("DELETE FROM sessions WHERE id = ?");
-        return $s->execute([$id]);
-    }
-
-    public function gc($max_lifetime): int|false {
-        $s = $this->db->prepare("DELETE FROM sessions WHERE expires < NOW()");
-        $s->execute();
-        return $s->rowCount();
-    }
-}
-
-session_set_save_handler(new DBSessionHandler($pdo), true);
-
-// ── Cross-origin session cookies ──────────────────────────────────────────
-session_set_cookie_params([
-    'lifetime' => 86400 * 30,
-    'path'     => '/',
-    'secure'   => true,
-    'httponly' => true,
-    'samesite' => 'None',
-]);
-session_start();
-
 // ── CORS ──────────────────────────────────────────────────────────────────
 $allowedOrigins = array_filter(array_map('trim', explode(',', getenv('FRONTEND_URL') ?: 'http://localhost:5173')));
 $requestOrigin  = $_SERVER['HTTP_ORIGIN'] ?? '';
