@@ -11,7 +11,7 @@ if ($dbUrl) {
     $pass = $p['pass'];
     $name = ltrim($p['path'], '/');
     $dsn  = "pgsql:host=$host;port=$port;dbname=$name;sslmode=require";
-} else {
+} else { 
     $host = 'localhost';
     $port = 5433;
     $user = 'postgres';
