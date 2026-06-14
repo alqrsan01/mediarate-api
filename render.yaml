@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: mediarate-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: TMDB_TOKEN
+        sync: false
