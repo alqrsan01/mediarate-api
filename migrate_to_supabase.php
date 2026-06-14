@@ -64,6 +64,10 @@ $tgt->exec("
 ");
 echo "✓ Schema ready on Supabase\n";
 
+// ── Wipe existing data (order matters due to FK constraints) ──────────────
+$tgt->exec("TRUNCATE TABLE user_episode_ratings, user_media, users RESTART IDENTITY CASCADE");
+echo "✓ Wiped all existing Supabase data\n";
+
 // ── Migrate users ─────────────────────────────────────────────────────────
 $users = $src->query("SELECT * FROM users ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 $ins = $tgt->prepare("
