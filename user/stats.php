@@ -64,8 +64,86 @@ $combined = [
     'watch_time_minutes' => $movie['watch_time_minutes'] + $tv['watch_time_minutes'],
 ];
 
+// Ratings distribution (1-10)
+$ratingRows = $pdo->prepare('
+    SELECT rating, COUNT(*) as cnt
+    FROM user_media
+    WHERE user_id = ? AND rating IS NOT NULL
+    GROUP BY rating ORDER BY rating
+');
+$ratingRows->execute([$user_id]);
+$ratingsAll = array_fill(1, 10, 0);
+foreach ($ratingRows->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $ratingsAll[(int)$r['rating']] = (int)$r['cnt'];
+}
+
+$ratingMovie = $pdo->prepare('
+    SELECT rating, COUNT(*) as cnt
+    FROM user_media
+    WHERE user_id = ? AND media_type = \'movie\' AND rating IS NOT NULL
+    GROUP BY rating ORDER BY rating
+');
+$ratingMovie->execute([$user_id]);
+$ratingsMovie = array_fill(1, 10, 0);
+foreach ($ratingMovie->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $ratingsMovie[(int)$r['rating']] = (int)$r['cnt'];
+}
+
+$ratingTV = $pdo->prepare('
+    SELECT rating, COUNT(*) as cnt
+    FROM user_media
+    WHERE user_id = ? AND media_type = \'tv\' AND rating IS NOT NULL
+    GROUP BY rating ORDER BY rating
+');
+$ratingTV->execute([$user_id]);
+$ratingsTV = array_fill(1, 10, 0);
+foreach ($ratingTV->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $ratingsTV[(int)$r['rating']] = (int)$r['cnt'];
+}
+
+// Genre breakdown
+$genreRows = $pdo->prepare('SELECT genres, media_type FROM user_media WHERE user_id = ? AND genres IS NOT NULL AND genres != \'\'');
+$genreRows->execute([$user_id]);
+$allCounts   = [];
+$movieCounts = [];
+$tvCounts    = [];
+foreach ($genreRows->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $names = explode(',', $row['genres']);
+    foreach ($names as $g) {
+        $g = trim($g);
+        if (!$g) continue;
+        $allCounts[$g]   = ($allCounts[$g] ?? 0) + 1;
+        if ($row['media_type'] === 'movie') $movieCounts[$g] = ($movieCounts[$g] ?? 0) + 1;
+        else                                $tvCounts[$g]    = ($tvCounts[$g]    ?? 0) + 1;
+    }
+}
+arsort($allCounts);   $genresAll   = array_slice($allCounts,   0, 10, true);
+arsort($movieCounts); $genresMovie = array_slice($movieCounts, 0, 10, true);
+arsort($tvCounts);    $genresTV    = array_slice($tvCounts,    0, 10, true);
+
+// Decade breakdown
+$decadeRows = $pdo->prepare('
+    SELECT FLOOR(release_year / 10) * 10 AS decade, media_type, COUNT(*) as cnt
+    FROM user_media
+    WHERE user_id = ? AND release_year IS NOT NULL AND status IN (\'watched\',\'watching\')
+    GROUP BY decade, media_type
+    ORDER BY decade
+');
+$decadeRows->execute([$user_id]);
+$dAll = []; $dMovie = []; $dTV = [];
+foreach ($decadeRows->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $d = (int)$row['decade'];
+    $dAll[$d]   = ($dAll[$d] ?? 0) + (int)$row['cnt'];
+    if ($row['media_type'] === 'movie') $dMovie[$d] = ($dMovie[$d] ?? 0) + (int)$row['cnt'];
+    else                                $dTV[$d]    = ($dTV[$d]    ?? 0) + (int)$row['cnt'];
+}
+ksort($dAll); ksort($dMovie); ksort($dTV);
+
 echo json_encode([
-    'stats' => $combined,
-    'movie' => $movie,
-    'tv'    => $tv,
+    'stats'   => $combined,
+    'movie'   => $movie,
+    'tv'      => $tv,
+    'ratings' => ['all' => $ratingsAll, 'movie' => $ratingsMovie, 'tv' => $ratingsTV],
+    'genres'  => ['all' => $genresAll,  'movie' => $genresMovie,  'tv' => $genresTV],
+    'decades' => ['all' => $dAll,       'movie' => $dMovie,       'tv' => $dTV],
 ]);

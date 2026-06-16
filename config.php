@@ -79,3 +79,58 @@ $pdo->exec("
         PRIMARY KEY (user_id, show_id, season_number, episode_number)
     )
 ");
+
+// Stats: genre/decade breakdown columns on user_media
+$pdo->exec("ALTER TABLE user_media ADD COLUMN IF NOT EXISTS release_year SMALLINT");
+$pdo->exec("ALTER TABLE user_media ADD COLUMN IF NOT EXISTS genres VARCHAR(500)");
+
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS collections (
+        id          SERIAL PRIMARY KEY,
+        user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name        VARCHAR(200) NOT NULL,
+        description TEXT,
+        created_at  TIMESTAMP DEFAULT NOW(),
+        updated_at  TIMESTAMP DEFAULT NOW()
+    )
+");
+$pdo->exec("CREATE INDEX IF NOT EXISTS idx_collections_user ON collections(user_id)");
+
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS collection_items (
+        id            SERIAL PRIMARY KEY,
+        collection_id INT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+        tmdb_id       INT NOT NULL,
+        media_type    VARCHAR(10) NOT NULL DEFAULT 'movie',
+        title         VARCHAR(500),
+        poster_path   VARCHAR(200),
+        added_at      TIMESTAMP DEFAULT NOW(),
+        UNIQUE(collection_id, tmdb_id, media_type)
+    )
+");
+$pdo->exec("CREATE INDEX IF NOT EXISTS idx_collection_items_collection ON collection_items(collection_id)");
+
+// Social: follows + activity feed
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS follows (
+        follower_id  INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        following_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at   TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (follower_id, following_id)
+    )
+");
+
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS activity (
+        id          SERIAL PRIMARY KEY,
+        user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type        VARCHAR(20) NOT NULL,
+        media_type  VARCHAR(10) NOT NULL,
+        tmdb_id     INT NOT NULL,
+        title       VARCHAR(255),
+        poster_path VARCHAR(255),
+        rating      INT,
+        created_at  TIMESTAMP DEFAULT NOW()
+    )
+");
+$pdo->exec("CREATE INDEX IF NOT EXISTS idx_activity_user ON activity(user_id)");

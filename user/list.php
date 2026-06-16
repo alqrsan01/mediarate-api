@@ -24,19 +24,21 @@ if ($method === 'GET') {
 
 } elseif ($method === 'POST') {
     $data       = json_decode(file_get_contents('php://input'), true);
-    $tmdb_id     = intval($data['tmdb_id'] ?? 0);
-    $media_type  = $data['media_type'] ?? 'movie';
-    $status      = $data['status'] ?? 'wishlist';
-    $rating      = isset($data['rating']) ? intval($data['rating']) : null;
-    $review      = $data['review'] ?? null;
-    $title         = $data['title'] ?? null;
-    $poster_path   = $data['poster_path'] ?? null;
-    $runtime       = isset($data['runtime']) ? intval($data['runtime']) : null;
+    $tmdb_id      = intval($data['tmdb_id'] ?? 0);
+    $media_type   = $data['media_type'] ?? 'movie';
+    $status       = $data['status'] ?? 'wishlist';
+    $rating       = isset($data['rating']) ? intval($data['rating']) : null;
+    $review       = $data['review'] ?? null;
+    $title        = $data['title'] ?? null;
+    $poster_path  = $data['poster_path'] ?? null;
+    $runtime      = isset($data['runtime']) ? intval($data['runtime']) : null;
     $season_counts = isset($data['season_counts']) ? json_encode($data['season_counts']) : null;
+    $release_year = isset($data['release_year']) ? intval($data['release_year']) : null;
+    $genres       = isset($data['genres']) ? implode(',', array_map('trim', (array)$data['genres'])) : null;
 
     $stmt = $pdo->prepare('
-    INSERT INTO user_media (user_id, media_type, tmdb_id, status, rating, review, title, poster_path, runtime, season_counts)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO user_media (user_id, media_type, tmdb_id, status, rating, review, title, poster_path, runtime, season_counts, release_year, genres)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (user_id, media_type, tmdb_id) DO UPDATE SET
       status = EXCLUDED.status,
       rating = EXCLUDED.rating,
@@ -45,9 +47,16 @@ if ($method === 'GET') {
       poster_path = COALESCE(EXCLUDED.poster_path, user_media.poster_path),
       runtime = COALESCE(EXCLUDED.runtime, user_media.runtime),
       season_counts = COALESCE(EXCLUDED.season_counts, user_media.season_counts),
+      release_year = COALESCE(EXCLUDED.release_year, user_media.release_year),
+      genres = COALESCE(EXCLUDED.genres, user_media.genres),
       updated_at = NOW()
     ');
-    $stmt->execute([$user_id, $media_type, $tmdb_id, $status, $rating, $review, $title, $poster_path, $runtime, $season_counts]);
+    $stmt->execute([$user_id, $media_type, $tmdb_id, $status, $rating, $review, $title, $poster_path, $runtime, $season_counts, $release_year, $genres]);
+
+    $activity_type = $rating ? 'rated' : $status;
+    $log = $pdo->prepare('INSERT INTO activity (user_id, type, media_type, tmdb_id, title, poster_path, rating) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    $log->execute([$user_id, $activity_type, $media_type, $tmdb_id, $title, $poster_path, $rating]);
+
     echo json_encode(['message' => 'Saved']);
 
 } elseif ($method === 'DELETE') {
